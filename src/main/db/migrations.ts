@@ -59,6 +59,28 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX idx_metric_values_placement ON metric_values(placement_id);
   CREATE INDEX idx_metric_values_date ON metric_values(date);
+  `,
+
+  // 2: metric_values becomes keyed on (placement, date, kind, metric) so a
+  // re-import of an overlapping period UPDATEs the existing value instead
+  // of inserting a duplicate that would double-count in every SUM(). Keeps
+  // one row per key even if earlier imports (pre-migration) left dupes —
+  // the most recently inserted row for each key wins, older ones are
+  // dropped.
+  `
+  DELETE FROM metric_values
+  WHERE id NOT IN (
+    SELECT id FROM (
+      SELECT id, ROW_NUMBER() OVER (
+        PARTITION BY placement_id, date, kind, metric
+        ORDER BY rowid DESC
+      ) AS rn
+      FROM metric_values
+    )
+    WHERE rn = 1
+  );
+
+  CREATE UNIQUE INDEX uq_metric_values_key ON metric_values(placement_id, date, kind, metric);
   `
 ]
 

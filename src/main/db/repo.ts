@@ -62,6 +62,11 @@ export function createSource(
   return id
 }
 
+/** Writes metric values keyed on (placement, date, kind, metric): a value
+ * for a key that already exists gets overwritten (latest import wins),
+ * rather than inserted as a second row that would double-count in every
+ * SUM(). This is what makes re-importing an updated weekly report safe —
+ * see the migration that added the unique index backing this. */
 export function insertMetricValues(
   db: Database.Database,
   sourceId: string,
@@ -75,7 +80,9 @@ export function insertMetricValues(
 ): void {
   const stmt = db.prepare(
     `INSERT INTO metric_values (id, placement_id, date, kind, metric, value, source_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT (placement_id, date, kind, metric)
+     DO UPDATE SET value = excluded.value, source_id = excluded.source_id`
   )
   const insertAll = db.transaction((rows: typeof entries) => {
     for (const row of rows) {
@@ -86,9 +93,13 @@ export function insertMetricValues(
 }
 
 /** Commits a batch of normalized rows in one transaction: campaigns and
- * placements are found-or-created, metric values are always inserted fresh
- * (re-importing the same file creates a new source + new values rather than
- * silently merging, so history is never lost). */
+ * placements are found-or-created (matched by name/channel, never
+ * duplicated); metric values are upserted on (placement, date, kind,
+ * metric) — re-importing an updated file for a period already in the DB
+ * overwrites those values instead of adding duplicate rows that would
+ * double-count in every aggregate. Each import still records its own
+ * `sources` row, so which import last touched a value is traceable even
+ * though the prior value itself isn't kept. */
 export function commitNormalizedRows(
   db: Database.Database,
   source: { filename: string; sheet: string; templateId: string | null },
