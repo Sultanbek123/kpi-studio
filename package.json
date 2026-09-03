@@ -1,10 +1,10 @@
 {
   "name": "kpi-studio",
   "version": "1.0.0",
-  "description": "An Electron application with React and TypeScript",
+  "description": "Local-first desktop app for digital-marketing KPI tables: Excel import wizard, plan/fact dashboard, no more spreadsheets.",
   "main": "./out/main/index.js",
-  "author": "example.com",
-  "homepage": "https://electron-vite.org",
+  "author": "Sultanbek Kenzhakhimov",
+  "homepage": "https://github.com/Sultanbek123/kpi-studio",
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint --cache .",
