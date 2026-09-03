@@ -1,5 +1,6 @@
 appId: com.samsung.kpistudio
 productName: KPI Studio
+afterSign: scripts/afterSign.cjs
 directories:
   buildResources: build
 files:
